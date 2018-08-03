@@ -24,6 +24,15 @@ return {
 		},
 
 		{
+			id = 'ShutterstockUrl',
+			title = "SS Url",
+			readOnly = false,
+			dataType = 'string', 
+			searchable = true,
+			version = 1,
+		},
+
+		{
 			id = 'ShutterstockCategory',
 			title = "SS Category",
 			dataType = 'enum',
@@ -89,6 +98,16 @@ return {
 			browsable = true,
 			version = 1,
 		},
+
+		{
+			id = 'CloseUrl',
+			title = "SS close Url",
+			readOnly = false,
+			dataType = 'string', 
+			searchable = true,
+			version = 1,
+		},
+
 	},
 	
 	schemaversion = 1,

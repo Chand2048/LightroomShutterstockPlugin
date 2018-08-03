@@ -52,6 +52,25 @@ function SSUtil.cleanFilename( photo )
     return f 
 end 
 
+function SSUtil.createFtpConnection()
+    local ftpParams = {}
+    ftpParams.passive = 'normal'
+    ftpParams.password = 'CIvmogUnOaslyd5'
+    ftpParams.path = '/submit'
+    ftpParams.port = 21
+    ftpParams.protocol = 'ftp'
+    ftpParams.server = 'ftp.shutterstock.com'
+    ftpParams.username = 'Chand2048@hotmail.com'
+    local connection = LrFtp.create( ftpParams, 2 )
+    if connection.connected then
+        LrDialogs.showError( "connected to ftp!" )
+    else
+        LrDialogs.showError( "failed to connect to ftp" )
+    end
+
+    return connection
+end
+
 function SSUtil.showUser( m1, m2 )
 	LrFunctionContext.callWithContext( "showCustomDialog", function( context )
 	    local f = LrView.osFactory()

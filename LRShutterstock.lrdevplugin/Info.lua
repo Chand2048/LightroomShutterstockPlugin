@@ -14,7 +14,7 @@ return {
 	LrSdkVersion = 5.0,
 
 	LrToolkitIdentifier = 'com.shutterstock.lightroom.manager',
-	LrPluginName = "Shutterstock3",
+	LrPluginName = "Shutterstock",
 	
 	LrMetadataProvider = 'ShutterstockMetadataDefinitionFile.lua',
 	LrMetadataTagsetFactory = { 'ShutterstockMetadataTagset.lua' },

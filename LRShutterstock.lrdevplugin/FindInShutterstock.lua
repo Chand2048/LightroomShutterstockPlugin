@@ -1,6 +1,6 @@
 --[[----------------------------------------------------------------------------
 
-SyncWithShutterstock.lua
+FindInShutterstock.lua
 
 --------------------------------------------------------------------------------
 
@@ -18,12 +18,8 @@ local LrFunctionContext = import 'LrFunctionContext'
 
 local catalog = LrApplication.activeCatalog()
 
---JSON = assert(loadfile './JSON.lua')() -- one-time load of the routines
-
 require 'SSUtil'
 JSON = require 'JSON.lua'
-
---JSON = OBJDEF:new()
 
 local userName = 'Chris W Anderson'
 local userNameSafe = 'Chris%20W%20Anderson'
@@ -33,7 +29,7 @@ local contributorID = 3780074
 
 SWSSMenuItem = {}
 
-function SWSSMenuItem.startSync( )
+function SWSSMenuItem.startFind( )
     local catPhotos = catalog.targetPhotos
     local msg = string.format( "Searching Shutterstock for %s photos", #catPhotos )
     pscope = LrProgressScope( { title = msg } )
@@ -53,14 +49,13 @@ function SWSSMenuItem.startSync( )
             local url = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockUrl' )
 
             if not SWSSMenuItem.verifyByUrl( photo, url ) then
-                if not SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc ) then
-                    SSUtil.showInShutterstock( photo )
-                end
+                SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
             end
 
             complete = complete + completeInc
-            pscope:setPortionComplete( complete, 100 )
         end 
+
+        pscope:setPortionComplete( complete, 100 )
     end )
 
     pscope:done()
@@ -259,8 +254,10 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
     photo.catalog:withPrivateWriteAccessDo( function() 
         photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
     end )
-    
+
+    LrHttp.openUrlInBrowser( bestUrl )
+
     return false
 end
 
-import 'LrTasks'.startAsyncTask( SWSSMenuItem.startSync )
+import 'LrTasks'.startAsyncTask( SWSSMenuItem.startFind )

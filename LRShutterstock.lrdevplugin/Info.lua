@@ -25,8 +25,12 @@ return {
 		    file = "OpenInShutterstock.lua",
 		},
 	    {
-		    title = "Syncronize with Shutterstock",
-		    file = "SyncWithShutterstock.lua",
+		    title = "Find In Shutterstock",
+		    file = "FindInShutterstock.lua",
+		},
+	    {
+		    title = "Replace keywords from Shutterstock",
+		    file = "ReplaceKeywords.lua",
 		},
 	},
 

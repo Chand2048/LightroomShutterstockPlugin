@@ -45,11 +45,20 @@ function SWSSMenuItem.startReplace( )
                 pscope:setCaption( string.format( "%s : Scraping keywords", photo:getFormattedMetadata( 'fileName' ) ) )
                 local ssKeywords = SWSSMenuItem.collectKeywords( url )
                 if ssKeywords ~= nil then
-                    SWSSMenuItem.removeAllKeywords( photo )
-                    SWSSMenuItem.addKeywordsFromStrings( photo, ssKeywords )
+                    local removeCount, addCount = SWSSMenuItem.reconcileKeywords( photo, ssKeywords )
+                    local msg = "Keywords: "
+                    if removeCount == 0 and addCount == 0 then
+                        msg = msg .. "no changes"
+                    end
+                    if removeCount > 0 then
+                        msg = msg .. "removed " .. removeCount
+                    end
+                    if addCount > 0 then
+                        msg = msg .. "added " .. addCount
+                    end
 
                     photo.catalog:withPrivateWriteAccessDo( function() 
-                        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', 'Copied keywords from Shutterstock' )
+                        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', msg )
                     end )
 
                     photo.catalog:withPrivateWriteAccessDo( function() 
@@ -69,27 +78,52 @@ function SWSSMenuItem.startReplace( )
     pscope:done()
 end
 
-function SWSSMenuItem.addKeywordsFromStrings( photo, keywords )
-    for _, name in ipairs( keywords ) do
-        local lrKw = nil
-        
-        photo.catalog:withWriteAccessDo( 'create keyword', function() 
-            lrKw = catalog:createKeyword( name, nil, true, nil, true )
-        end )
-        
-        photo.catalog:withWriteAccessDo( 'add keyword', function() 
-            photo:addKeyword( lrKw )
-        end )
+function SWSSMenuItem.buildKeywordMapFromPhoto( photo )
+    local existingKeywords = photo:getRawMetadata( 'keywords' )
+    local outTable = {}
+    
+    for _, kw in pairs(existingKeywords) do
+        local name = string.lower( kw:getName() )
+        outTable[ name ] = kw
     end
+
+    return outTable
 end
 
-function SWSSMenuItem.removeAllKeywords( photo )
-    local existingKeywords = photo:getRawMetadata( 'keywords' )
-    for _, kw in ipairs( existingKeywords ) do
-        photo.catalog:withWriteAccessDo( 'remove keyword', function() 
-            photo:removeKeyword( kw ) 
-        end )
+function SWSSMenuItem.reconcileKeywords( photo, ssKeywords )
+    local photoKeywords = SWSSMenuItem.buildKeywordMapFromPhoto( photo )
+
+    -- First remove keywords from photo that are not in shutterstock
+    local removeCount = 0
+    for kwName, lrKw in pairs( photoKeywords ) do
+        if ssKeywords[ kwName ] == nil then
+            photo.catalog:withWriteAccessDo( 'remove keyword', function() 
+                photo:removeKeyword( lrKw ) 
+            end )
+
+            removeCount = removeCount + 1
+        end
     end
+
+    -- Now add any keywords that are not already there
+    local addCount = 0
+    for kwName, _ in pairs( ssKeywords ) do
+        if photoKeywords[ kwName ] == nil then
+            local lrKw = nil
+            
+            photo.catalog:withWriteAccessDo( 'create keyword', function() 
+                lrKw = catalog:createKeyword( kwName, nil, true, nil, true )
+            end )
+            
+            photo.catalog:withWriteAccessDo( 'add keyword', function() 
+                photo:addKeyword( lrKw )
+            end )
+
+            addCount = addCount + 1
+        end
+    end
+
+    return removeCount, addCount
 end
 
 function SWSSMenuItem.collectKeywords( url )
@@ -102,8 +136,9 @@ function SWSSMenuItem.collectKeywords( url )
             if i ~= nil then
                 i = i + string.len( prefix )
                 local j = string.find( response, '"', i + 1, true )
-                local keywordStr = string.sub( response, i, j - 1 )
-                return SSUtil.split( keywordStr, ',' )
+                local keywordStr = string.lower( string.sub( response, i, j - 1 ) )
+                local k = SSUtil.split( keywordStr, ',' )
+                return SSUtil.flipKeyValue( k )
             end
         end
     end

@@ -22,13 +22,42 @@ SSUtil = {}
 
 function SSUtil.showInShutterstock( photo ) 
     local ssID = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockId' )
+    local closeUrl = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'CloseUrl' )
+    local shutterstockUrl = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockUrl' )
+    
+    if shutterstockUrl then
+        LrHttp.openUrlInBrowser( shutterstockUrl )
+        return true
+    end
+
     if ssID then
-        local url = string.format( "https://submit.shutterstock.com/catalog_manager/images/%s", ssID )
-        LrHttp.openUrlInBrowser( url )
+        SSUtil.showInShutterstockByID( ssID )
+    end
+
+    if closeUrl then
+        ssID = SSUtil.getIdFromEndOfUrl( closeUrl )
+        
+        if ssID then
+            SSUtil.showInShutterstockByID( ssID )
+        else
+            LrHttp.openUrlInBrowser( closeUrl )
+        end
+
         return true
     end
 
     return false
+end
+
+function SSUtil.getIdFromEndOfUrl( url )
+    -- https://www.shutterstock.com/image-photo/water-buffalo-looks-one-piece-grass-1037674936
+    local temp = string.reverse( url )
+    local i = string.find( temp, '-' )
+    if i ~= nil then
+        return string.reverse( string.sub( temp, 1, i - 1 ) )
+    end
+
+    return nil
 end
 
 function SSUtil.showInShutterstockByID( ssID ) 
@@ -93,21 +122,34 @@ function SSUtil.showUser( m1, m2 )
 	end)
 end
 
+function SSUtil.flipKeyValue( table )
+    local outTable = {}
+    for key, val in pairs(table) do
+        outTable[val] = key
+    end
+
+    return outTable
+end
+
 function SSUtil.split( pString, pPattern )
-   local Table = {}  -- NOTE: use {n = 0} in Lua-5.0
-   local fpat = "(.-)" .. pPattern
-   local last_end = 1
-   local s, e, cap = pString:find(fpat, 1)
-   while s do
-      if s ~= 1 or cap ~= "" then
-     table.insert(Table,cap)
-      end
-      last_end = e+1
-      s, e, cap = pString:find(fpat, last_end)
-   end
-   if last_end <= #pString then
-      cap = pString:sub(last_end)
-      table.insert(Table, cap)
-   end
-   return Table
+    local Table = {}  -- NOTE: use {n = 0} in Lua-5.0
+    local fpat = "(.-)" .. pPattern
+    local last_end = 1
+    local s, e, cap = pString:find(fpat, 1)
+    
+    while s do
+        if s ~= 1 or cap ~= "" then
+            table.insert(Table,cap)
+        end
+    
+        last_end = e+1
+        s, e, cap = pString:find(fpat, last_end)
+    end
+   
+    if last_end <= #pString then
+        cap = pString:sub(last_end)
+        table.insert(Table, cap)
+    end
+    
+    return Table
 end

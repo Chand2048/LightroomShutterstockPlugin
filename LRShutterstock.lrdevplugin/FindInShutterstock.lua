@@ -46,10 +46,17 @@ function SWSSMenuItem.startFind( )
 
         for _, photo in ipairs( catPhotos ) do
             pscope:setCaption( string.format( "%s : Verifying with shutterstock metadata", photo:getFormattedMetadata( 'fileName' ) ) )
+            
             local url = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockUrl' )
-
             if not SWSSMenuItem.verifyByUrl( photo, url ) then
-                SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
+                
+                local closeUrl = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'CloseUrl' )
+                if SWSSMenuItem.verifyByUrl( photo, closeUrl ) then
+                    local ssID = SSUtil.getIdFromEndOfUrl( closeUrl )
+                    SWSSMenuItem.setFound( photo, closeUrl, ssID )
+                else
+                    SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
+                end
             end
 
             complete = complete + completeInc
@@ -152,15 +159,48 @@ function SWSSMenuItem.collectUrlsFromSearch( searchStr )
     return urls
 end
 
-function SWSSMenuItem.getIdFromUrl( url )
-    -- https://www.shutterstock.com/image-photo/water-buffalo-looks-one-piece-grass-1037674936
-    local temp = string.reverse( url )
-    local i = string.find( temp, '-' )
-    if i ~= nil then
-        return string.reverse( string.sub( temp, 1, i - 1 ) )
-    end
+function SWSSMenuItem.setFound( photo, url, ssID )
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', ssID ) 
+    end )
 
-    return nil
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUrl', url ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', nil ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Accepted' ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', 'Found in Shutterstosck' )
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
+    end )
+end
+
+function SWSSMenuItem.setError( photo, closeUrl, msg )
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Error' )
+    end )
+    
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', closeUrl ) 
+    end )
+    
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', msg ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
+    end )
 end
 
 function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
@@ -200,32 +240,8 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
             for i, url in pairs(urls) do
                 local fullMatch, partialMatch = SWSSMenuItem.verifyByUrl( photo, url )
                 if fullMatch then
-                    local ssID = SWSSMenuItem.getIdFromUrl( url )
-
-                    photo.catalog:withPrivateWriteAccessDo( function() 
-                        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', ssID ) 
-                    end )
-
-                    photo.catalog:withPrivateWriteAccessDo( function() 
-                        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUrl', url ) 
-                    end )
-
-                    photo.catalog:withPrivateWriteAccessDo( function() 
-                        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', nil ) 
-                    end )
-
-                    photo.catalog:withPrivateWriteAccessDo( function() 
-                        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Accepted' ) 
-                    end )
-
-                    photo.catalog:withPrivateWriteAccessDo( function() 
-                        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', 'Found in Shutterstosck' )
-                    end )
-
-                    photo.catalog:withPrivateWriteAccessDo( function() 
-                        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
-                    end )
-
+                    local ssID = SSUtil.getIdFromEndOfUrl( url )
+                    SWSSMenuItem.setFound( photo, url, ssID )
                     return true
                 end
 
@@ -239,22 +255,7 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
         titleWords[#titleWords] = nil
     end 
 
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Error' )
-    end )
-    
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', bestUrl ) 
-    end )
-    
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', 'Failed to find matches' ) 
-    end )
-
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
-    end )
-
+    SWSSMenuItem.setError( photo, closeUrl, 'Failed to find matches' )
     LrHttp.openUrlInBrowser( bestUrl )
 
     return false

@@ -16,9 +16,33 @@ local LrView = import 'LrView'
 local LrDialogs = import 'LrDialogs'
 local LrPathUtils = import 'LrPathUtils'
 
+--JSON = require 'JSON.lua'
+
+------------------------------------------------------------------------------]]
+
 SSUtil = {}
 
 --============================================================================--
+
+function SSUtil.getUserName()
+    return 'Chris W Anderson'
+end
+
+function SSUtil.getUserNameSafe()
+    return 'Chris%20W%20Anderson'
+end
+
+function SSUtil.getSsScrapeImagePrefix()
+    -- Example https://www.shutterstock.com/image-photo/water-buffalo-looks-one-piece-grass-1037674936
+    -- If title words are not included it will re-direct to title version
+    return "https://www.shutterstock.com/image-photo/"
+end
+
+function SSUtil.getEditImageUrl( ssID )
+    -- Example: https://submit.shutterstock.com/catalog_manager/images/1037710735
+    -- Does not include title
+    return "https://submit.shutterstock.com/catalog_manager/images/" .. ssID
+end
 
 function SSUtil.showInShutterstock( photo ) 
     local ssID = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockId' )
@@ -50,11 +74,13 @@ function SSUtil.showInShutterstock( photo )
 end
 
 function SSUtil.getIdFromEndOfUrl( url )
-    -- https://www.shutterstock.com/image-photo/water-buffalo-looks-one-piece-grass-1037674936
-    local temp = string.reverse( url )
-    local i = string.find( temp, '-' )
-    if i ~= nil then
-        return string.reverse( string.sub( temp, 1, i - 1 ) )
+    if url then
+        -- Example: https://www.shutterstock.com/image-photo/water-buffalo-looks-one-piece-grass-1037674936
+        local temp = string.reverse( url )
+        local i = string.find( temp, '-' )
+        if i ~= nil then
+            return string.reverse( string.sub( temp, 1, i - 1 ) )
+        end
     end
 
     return nil
@@ -62,7 +88,7 @@ end
 
 function SSUtil.showInShutterstockByID( ssID ) 
     if ssID then
-        local url = string.format( "https://submit.shutterstock.com/catalog_manager/images/%s", ssID )
+        local url = SSUtil.getEditImageUrl( ssID )
         LrHttp.openUrlInBrowser( url )
         return true
     end

@@ -40,7 +40,8 @@ function SWSSMenuItem.startReplace( )
         pscope:setPortionComplete(complete, 100)
 
         for _, photo in ipairs( catPhotos ) do
-            local url = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockUrl' )
+            local ssID = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockId' )
+            local url = SSUtil.getEditImageUrl( ssID )
             if url ~= nil then
                 pscope:setCaption( string.format( "%s : Scraping keywords", photo:getFormattedMetadata( 'fileName' ) ) )
                 local ssKeywords = SWSSMenuItem.collectKeywords( url )

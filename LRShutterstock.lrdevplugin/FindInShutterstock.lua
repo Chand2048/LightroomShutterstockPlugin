@@ -19,11 +19,6 @@ local LrFunctionContext = import 'LrFunctionContext'
 local catalog = LrApplication.activeCatalog()
 
 require 'SSUtil'
-JSON = require 'JSON.lua'
-
-local userName = 'Chris W Anderson'
-local userNameSafe = 'Chris%20W%20Anderson'
-local contributorID = 3780074
 
 --============================================================================--
 
@@ -53,7 +48,7 @@ function SWSSMenuItem.startFind( )
                 local closeUrl = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'CloseUrl' )
                 if SWSSMenuItem.verifyByUrl( photo, closeUrl ) then
                     local ssID = SSUtil.getIdFromEndOfUrl( closeUrl )
-                    SWSSMenuItem.setFound( photo, closeUrl, ssID )
+                    SWSSMenuItem.setFound( photo, ssID )
                 else
                     SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
                 end
@@ -70,12 +65,11 @@ end
 
 function SWSSMenuItem.verifyByUrl( photo, url )
     if url then
-        -- local url = string.format( "https://www.shutterstock.com/image-photo/%s", ssID )
         local response, hdrs = LrHttp.get( url )
 
         if response then
             -- Check username
-            if string.find( response, userName, 1, true ) == nil then
+            if string.find( response, SSUtil.getUserName(), 1, true ) == nil then
                 return false, false
             end
 
@@ -120,7 +114,7 @@ function SWSSMenuItem.verifyByssID( photo, ssID )
             SSPhoto.data.media_type == 'image' and
             SSPhoto.data.status == 'approved' and
             SSPhoto.data.is_adult == false and
-            SSPhoto.data.contributor_id == contributorID and
+            SSPhoto.data.contributor_id == SSUtil.contributorID and
             SSPhoto.data.original_filename == fileNameJpg and 
             SSPhoto.data.sizes.huge_jpg.width == photo:getFormattedMetadata( 'maxAvailWidth' ) and
             SSPhoto.data.sizes.huge_jpg.height == photo:getFormattedMetadata( 'maxAvailHeight' )
@@ -129,8 +123,7 @@ end
 --]]
 
 function SWSSMenuItem.collectUrlsFromSearch( searchStr )
-    local searchUrl = string.format( "https://www.shutterstock.com/g/%s?searchterm=%s&search_source=base_gallery&language=en&sort=popular&image_type=photo&measurement=px&safe=false", userNameSafe, searchStr )
-    --LrHttp.openUrlInBrowser( url )
+    local searchUrl = string.format( "https://www.shutterstock.com/g/%s?searchterm=%s&search_source=base_gallery&language=en&sort=popular&image_type=photo&measurement=px&safe=false", SSUtil.getUserNameSafe(), searchStr )
     local response, hdrs = LrHttp.get( searchUrl )
 
     if not response then
@@ -149,7 +142,7 @@ function SWSSMenuItem.collectUrlsFromSearch( searchStr )
         if i ~= nil then
             i = i + string.len( prefix )
             local j = string.find( response, '?', i + 1, true )
-            local url = 'https://www.shutterstock.com/image-photo/' .. string.sub( response, i, j - 1 )
+            local url = SSUtil.getSsScrapeImagePrefix() .. string.sub( response, i, j - 1 )
             urls[#urls + 1] = url
         else   
             break
@@ -159,11 +152,12 @@ function SWSSMenuItem.collectUrlsFromSearch( searchStr )
     return urls
 end
 
-function SWSSMenuItem.setFound( photo, url, ssID )
+function SWSSMenuItem.setFound( photo, ssID )
     photo.catalog:withPrivateWriteAccessDo( function() 
         photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', ssID ) 
     end )
 
+    local url = SSUtil.getEditImageUrl( ssID )
     photo.catalog:withPrivateWriteAccessDo( function() 
         photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUrl', url ) 
     end )
@@ -187,11 +181,21 @@ end
 
 function SWSSMenuItem.setError( photo, closeUrl, msg )
     photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Error' )
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', nil ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUrl', nil ) 
+    end )
+
+    local ssID = SSUtil.getIdFromEndOfUrl( closeUrl )
+    local url = SSUtil.getEditImageUrl( ssID )
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', url ) 
     end )
     
     photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', closeUrl ) 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Error' )
     end )
     
     photo.catalog:withPrivateWriteAccessDo( function() 
@@ -241,7 +245,7 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
                 local fullMatch, partialMatch = SWSSMenuItem.verifyByUrl( photo, url )
                 if fullMatch then
                     local ssID = SSUtil.getIdFromEndOfUrl( url )
-                    SWSSMenuItem.setFound( photo, url, ssID )
+                    SWSSMenuItem.setFound( photo, ssID )
                     return true
                 end
 
@@ -255,9 +259,7 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
         titleWords[#titleWords] = nil
     end 
 
-    SWSSMenuItem.setError( photo, closeUrl, 'Failed to find matches' )
-    LrHttp.openUrlInBrowser( bestUrl )
-
+    SWSSMenuItem.setError( photo, bestUrl, 'Failed to find matches' )
     return false
 end
 

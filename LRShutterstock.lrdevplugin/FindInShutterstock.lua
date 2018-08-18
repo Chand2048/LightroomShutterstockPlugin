@@ -218,14 +218,11 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
         end
     end
 
+    local checkedUrl = {}
     local myCompleteInc = completeInc / #titleWords
     local bestUrl = nil
 
     while #titleWords ~= 0 do
-        pscope:setCaption( string.format( "%s : Checking title with %s words...", photo:getFormattedMetadata( 'fileName' ), #titleWords ) )
-        pscope:setPortionComplete(complete, 100)
-        complete = complete + myCompleteInc
-
         local titleCleaned = nil
         for i, w in pairs(titleWords) do
             if w then
@@ -237,26 +234,47 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
             end
         end
 
+        pscope:setCaption( string.format( "%s : %s", photo:getFormattedMetadata( 'fileName' ), titleCleaned ) )
+        pscope:setPortionComplete(complete, 100)
+        complete = complete + myCompleteInc
+
         local urls = SWSSMenuItem.collectUrlsFromSearch( titleCleaned )
         
         -- Open everything if we find more than one
-        if #urls >= 1 and #urls <= 3 then
+        if #urls >= 1 then
             for i, url in pairs(urls) do
-                local fullMatch, partialMatch = SWSSMenuItem.verifyByUrl( photo, url )
-                if fullMatch then
-                    local ssID = SSUtil.getIdFromEndOfUrl( url )
-                    SWSSMenuItem.setFound( photo, ssID )
-                    return true
-                end
+                if checkedUrl[url] == nil then
+                    pscope:setCaption( string.format( "%s : Checking %s of %s", photo:getFormattedMetadata( 'fileName' ), i, #urls ) )
+                    local fullMatch, partialMatch = SWSSMenuItem.verifyByUrl( photo, url )
+                    if fullMatch then
+                        local ssID = SSUtil.getIdFromEndOfUrl( url )
+                        SWSSMenuItem.setFound( photo, ssID )
+                        return true
+                    end
 
-                if partialMatch then
-                    bestUrl = url
+                    checkedUrl[checkedUrl] = false
+                    
+                    if partialMatch then
+                        bestUrl = url
+                    end
                 end
             end 
         end
 
-        -- remove the last word in the title and try again
-        titleWords[#titleWords] = nil
+        -- remove the shortest word and try again
+        local shortestIndex = nil
+        local shortestLen = 1000
+        for i, word in pairs(titleWords) do
+            local l = string.len( titleWords[i] )
+            if l < shortestLen then
+                shortestIndex = i
+                shortestLen = l
+            end
+        end
+
+        if shortestIndex ~= nil then
+            titleWords[shortestIndex] = nil
+        end
     end 
 
     SWSSMenuItem.setError( photo, bestUrl, 'Failed to find matches' )

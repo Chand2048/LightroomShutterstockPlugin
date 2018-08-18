@@ -41,7 +41,34 @@ end
 function SSUtil.getEditImageUrl( ssID )
     -- Example: https://submit.shutterstock.com/catalog_manager/images/1037710735
     -- Does not include title
-    return "https://submit.shutterstock.com/catalog_manager/images/" .. ssID
+    if ssID then
+        return "https://submit.shutterstock.com/catalog_manager/images/" .. ssID
+    else
+        return nil
+    end
+end
+
+function SSUtil.getSSIdFromPhoto( photo )
+    if photo == nil then
+        return nil
+    end
+    
+    local ssID = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockId' )
+     if ssID then
+        return ssID
+    end
+
+    local shutterstockUrl = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockUrl' )
+    if shutterstockUrl then
+        return SSUtil.getIdFromEndOfUrl( shutterstockUrl )
+    end
+
+    local closeUrl = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'CloseUrl' )
+    if closeUrl then
+        return SSUtil.getIdFromEndOfUrl( closeUrl )
+    end
+
+    return nil
 end
 
 function SSUtil.showInShutterstock( photo ) 

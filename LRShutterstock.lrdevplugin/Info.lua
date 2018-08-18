@@ -25,12 +25,20 @@ return {
 		    file = "OpenInShutterstock.lua",
 		},
 	    {
+		    title = "Enumerate Shutterstock Catalog",
+		    file = "EnumerateShutterstock.lua",
+		},
+	    {
 		    title = "Find In Shutterstock",
 		    file = "FindInShutterstock.lua",
 		},
 	    {
 		    title = "Replace keywords from Shutterstock",
 		    file = "ReplaceKeywords.lua",
+		},
+	    {
+		    title = "Manually link to Shutterstock",
+		    file = "ManualSSId.lua",
 		},
 	},
 

@@ -41,21 +41,23 @@ function SWSSMenuItem.startReplace( )
 
         for _, photo in ipairs( catPhotos ) do
             local ssID = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockId' )
-            local url = SSUtil.getEditImageUrl( ssID )
+            local url = SSUtil.getSsScrapeImagePrefix() .. ssID
+            pscope:setCaption( string.format( "%s : Scraping keywords", photo:getFormattedMetadata( 'fileName' ) ) )
+            pscope:setPortionComplete(complete, 100)
+
             if url ~= nil then
-                pscope:setCaption( string.format( "%s : Scraping keywords", photo:getFormattedMetadata( 'fileName' ) ) )
                 local ssKeywords = SWSSMenuItem.collectKeywords( url )
                 if ssKeywords ~= nil then
                     local removeCount, addCount = SWSSMenuItem.reconcileKeywords( photo, ssKeywords )
-                    local msg = "Keywords: "
+                    local msg = "Keywords:"
                     if removeCount == 0 and addCount == 0 then
-                        msg = msg .. "no changes"
+                        msg = msg .. " no changes"
                     end
                     if removeCount > 0 then
-                        msg = msg .. "removed " .. removeCount
+                        msg = msg .. " removed " .. removeCount
                     end
                     if addCount > 0 then
-                        msg = msg .. "added " .. addCount
+                        msg = msg .. " added " .. addCount
                     end
 
                     photo.catalog:withPrivateWriteAccessDo( function() 
@@ -137,7 +139,8 @@ function SWSSMenuItem.collectKeywords( url )
             if i ~= nil then
                 i = i + string.len( prefix )
                 local j = string.find( response, '"', i + 1, true )
-                local keywordStr = string.lower( string.sub( response, i, j - 1 ) )
+                local keywordStr = string.sub( response, i, j - 1 )
+                keywordStr = string.lower( keywordStr )
                 local k = SSUtil.split( keywordStr, ',' )
                 return SSUtil.flipKeyValue( k )
             end

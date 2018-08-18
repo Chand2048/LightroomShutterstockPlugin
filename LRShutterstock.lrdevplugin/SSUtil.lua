@@ -206,3 +206,115 @@ function SSUtil.split( pString, pPattern )
     
     return Table
 end
+
+function SSUtil.findInCatalogBySSId( catalog, ssID ) 
+    local photos = catalog:findPhotos { 
+        searchDesc = { 
+            criteria = "allPluginMetadata", 
+            operation = "all", 
+            value = ssID, 
+        }, 
+    }
+
+    if photos == nil then
+        return nil
+    end
+
+    -- double check the SSID to make sure we have the proper match
+    results = {}
+    for _, photo in ipairs( photos ) do
+        local id = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockId' )
+        if t == title then
+            results[#results + 1] = photo
+        end
+    end
+
+    if #results == 0 then
+        return nil
+    else
+        return results
+    end
+end
+
+function SSUtil.findInCatalogByTitle( catalog, title ) 
+    local photos = catalog:findPhotos { 
+        searchDesc = { 
+            criteria = "title", 
+            operation = "all", 
+            value = title, 
+        }, 
+    }
+
+    if photos == nil then
+        return nil
+    end
+
+    results = {}
+    for _, photo in ipairs( photos ) do
+        local t = photo:getFormattedMetadata( 'title' )
+        if t == title then
+            results[#results + 1] = photo
+        end
+    end
+
+    if #results == 0 then
+        return nil
+    else
+        return results
+    end
+end
+
+function SSUtil.setFound( photo, ssID )
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', ssID ) 
+    end )
+
+    local url = SSUtil.getEditImageUrl( ssID )
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUrl', url ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', nil ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Accepted' ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', 'Found in Shutterstosck' )
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
+    end )
+end
+
+function SSUtil.setError( photo, closeUrl, msg )
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', nil ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUrl', nil ) 
+    end )
+
+    local ssID = SSUtil.getIdFromEndOfUrl( closeUrl )
+    local url = SSUtil.getEditImageUrl( ssID )
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', url ) 
+    end )
+    
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Error' )
+    end )
+    
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', msg ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
+    end )
+end

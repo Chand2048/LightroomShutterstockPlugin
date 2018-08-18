@@ -48,7 +48,7 @@ function SWSSMenuItem.startFind( )
                 local closeUrl = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'CloseUrl' )
                 if SWSSMenuItem.verifyByUrl( photo, closeUrl ) then
                     local ssID = SSUtil.getIdFromEndOfUrl( closeUrl )
-                    SWSSMenuItem.setFound( photo, ssID )
+                    SSUtil.setFound( photo, ssID )
                 else
                     SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
                 end
@@ -152,61 +152,6 @@ function SWSSMenuItem.collectUrlsFromSearch( searchStr )
     return urls
 end
 
-function SWSSMenuItem.setFound( photo, ssID )
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', ssID ) 
-    end )
-
-    local url = SSUtil.getEditImageUrl( ssID )
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUrl', url ) 
-    end )
-
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', nil ) 
-    end )
-
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Accepted' ) 
-    end )
-
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', 'Found in Shutterstosck' )
-    end )
-
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
-    end )
-end
-
-function SWSSMenuItem.setError( photo, closeUrl, msg )
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', nil ) 
-    end )
-
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUrl', nil ) 
-    end )
-
-    local ssID = SSUtil.getIdFromEndOfUrl( closeUrl )
-    local url = SSUtil.getEditImageUrl( ssID )
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'CloseUrl', url ) 
-    end )
-    
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Error' )
-    end )
-    
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', msg ) 
-    end )
-
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
-    end )
-end
-
 function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
     -- Use search to find the photo by title.
     -- Keep removing words until we find only one photo
@@ -248,7 +193,7 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
                     local fullMatch, partialMatch = SWSSMenuItem.verifyByUrl( photo, url )
                     if fullMatch then
                         local ssID = SSUtil.getIdFromEndOfUrl( url )
-                        SWSSMenuItem.setFound( photo, ssID )
+                        SSUtil.setFound( photo, ssID )
                         return true
                     end
 
@@ -277,7 +222,7 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
         end
     end 
 
-    SWSSMenuItem.setError( photo, bestUrl, 'Failed to find matches' )
+    SSUtil.setError( photo, bestUrl, 'Failed to find matches' )
     return false
 end
 

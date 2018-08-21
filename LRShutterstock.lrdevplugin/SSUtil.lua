@@ -199,7 +199,7 @@ function SSUtil.split( pString, pPattern )
         s, e, cap = pString:find(fpat, last_end)
     end
    
-    if last_end <= #pString then
+    if last_end <= string.len(pString) then
         cap = pString:sub(last_end)
         table.insert(Table, cap)
     end
@@ -222,10 +222,12 @@ function SSUtil.findInCatalogBySSId( catalog, ssID )
 
     -- double check the SSID to make sure we have the proper match
     results = {}
+    local i = 1
     for _, photo in ipairs( photos ) do
         local id = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockId' )
         if t == title then
-            results[#results + 1] = photo
+            results[i] = photo
+            i = i + 1
         end
     end
 
@@ -246,10 +248,12 @@ function SSUtil.findInCatalogByTitle( catalog, title )
     end
 
     results = {}
+    local i = 1
     for _, photo in ipairs( photos ) do
         local t = photo:getFormattedMetadata( 'title' )
         if t == title then
-            results[#results + 1] = photo
+            results[i] = photo
+            i = i + 1
         end
     end
 
@@ -334,8 +338,10 @@ end
 
 function SSUtil.tableLength( t )
     local c = 0
-    for _, _ in pairs( t ) do
-        c = c + 1
+    if t ~= nil then
+        for k, v in pairs( t ) do
+            c = c + 1
+        end
     end
 
     return c

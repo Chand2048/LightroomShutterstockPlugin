@@ -26,9 +26,9 @@ SWSSMenuItem = {}
 
 function SWSSMenuItem.startFind( )
     local catPhotos = catalog.targetPhotos
-    local msg = string.format( "Searching Shutterstock for %s photos", #catPhotos )
+    local catPhotosLen = SSUtil.tableLength( catPhotos )
+    local msg = string.format( "Searching Shutterstock for %s photos", catPhotosLen )
     pscope = LrProgressScope( { title = msg } )
-    pscope:setCancelable( true )
 
     LrFunctionContext.callWithContext( "TryToSyncShutterstock", function(context)
         context:addCleanupHandler( function()
@@ -36,7 +36,10 @@ function SWSSMenuItem.startFind( )
             end) 
 
         local complete = 0
-        local completeInc = 100 / #catPhotos
+        local completeInc = 100 / catPhotosLen
+
+        pscope:setCancelable( true )
+        pscope:attachToFunctionContext( context )
         pscope:setPortionComplete(complete, 100)
 
         for _, photo in ipairs( catPhotos ) do
@@ -57,10 +60,8 @@ function SWSSMenuItem.startFind( )
             complete = complete + completeInc
         end 
 
-        pscope:setPortionComplete( complete, 100 )
+        pscope:done()
     end )
-
-    pscope:done()
 end
 
 function SWSSMenuItem.verifyByUrl( photo, url )
@@ -133,6 +134,7 @@ function SWSSMenuItem.collectUrlsFromSearch( searchStr )
 
     -- Find all of the IDs.
     local urls = {}
+    local index = 1
     local i = 0
     while true do
         -- sample <a href="/image-photo/water-buffalo-looks-one-piece-grass-1037674936?src=YdtO8xuXlNbJKHFw7ximoA-1-0" class="js_related-item a" data-current-order-index=""  data-track="click.searchResultsContributorProfileImages.image-1-1037674936" >
@@ -143,7 +145,8 @@ function SWSSMenuItem.collectUrlsFromSearch( searchStr )
             i = i + string.len( prefix )
             local j = string.find( response, '?', i + 1, true )
             local url = SSUtil.getSsScrapeImagePrefix() .. string.sub( response, i, j - 1 )
-            urls[#urls + 1] = url
+            urls[index] = url
+            index = index + 1
         else   
             break
         end
@@ -157,17 +160,20 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
     -- Keep removing words until we find only one photo
     local title = photo:getFormattedMetadata( 'title' )
     local titleWords = {}
+    local index = 1
     for w in string.gmatch(title, "%a+") do
         if w then
-            titleWords[#titleWords + 1] = w
+            titleWords[index] = w
+            index = index + 1
         end
     end
 
     local checkedUrl = {}
-    local myCompleteInc = completeInc / #titleWords
+    local titleWordsLen = SSUtil.tableLength( titleWords )
+    local myCompleteInc = completeInc / titleWordsLen
     local bestUrl = nil
 
-    while #titleWords ~= 0 do
+    while titleWordsLen ~= 0 do
         local titleCleaned = nil
         for i, w in pairs(titleWords) do
             if w then
@@ -184,12 +190,13 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
         complete = complete + myCompleteInc
 
         local urls = SWSSMenuItem.collectUrlsFromSearch( titleCleaned )
-        
+        local urlsLen = SSUtil.tableLength( urls )
+
         -- Open everything if we find more than one
-        if #urls >= 1 then
+        if urlsLen >= 1 then
             for i, url in pairs(urls) do
                 if checkedUrl[url] == nil then
-                    pscope:setCaption( string.format( "%s : Checking %s of %s", photo:getFormattedMetadata( 'fileName' ), i, #urls ) )
+                    pscope:setCaption( string.format( "%s : Checking %s of %s", photo:getFormattedMetadata( 'fileName' ), i, urlsLen ) )
                     local fullMatch, partialMatch = SWSSMenuItem.verifyByUrl( photo, url )
                     if fullMatch then
                         local ssID = SSUtil.getIdFromEndOfUrl( url )

@@ -26,9 +26,9 @@ SWSSMenuItem = {}
 
 function SWSSMenuItem.startReplace( )
     local catPhotos = catalog.targetPhotos
-    local msg = string.format( "Replacing keywords from Shutterstock for %s photos", #catPhotos )
+    local catPhotosLen = SSUtil.tableLength( catPhotos )
+    local msg = string.format( "Replacing keywords from Shutterstock for %s photos", catPhotosLen )
     pscope = LrProgressScope( { title = msg } )
-    pscope:setCancelable( true )
 
     LrFunctionContext.callWithContext( "ReplaceKeywords", function(context)
         context:addCleanupHandler( function()
@@ -36,49 +36,53 @@ function SWSSMenuItem.startReplace( )
             end) 
 
         local complete = 0
-        local completeInc = 100 / #catPhotos
+        local completeInc = 100 / catPhotosLen
+        pscope:setCancelable( true )
+        pscope:attachToFunctionContext( context )
         pscope:setPortionComplete(complete, 100)
 
         for _, photo in ipairs( catPhotos ) do
             local ssID = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockId' )
-            local url = SSUtil.getSsScrapeImagePrefix() .. ssID
-            pscope:setCaption( string.format( "%s : Scraping keywords", photo:getFormattedMetadata( 'fileName' ) ) )
-            pscope:setPortionComplete(complete, 100)
+            if ssID == nil then
+                SSUtil.setError( photo, bestUrl, 'No shutterstock ID - can not collet keywords' )
+            else
+                local url = SSUtil.getSsScrapeImagePrefix() .. ssID
+                pscope:setCaption( string.format( "%s : Scraping keywords", photo:getFormattedMetadata( 'fileName' ) ) )
+                pscope:setPortionComplete(complete, 100)
 
-            if url ~= nil then
-                local ssKeywords = SWSSMenuItem.collectKeywords( url )
-                if ssKeywords ~= nil then
-                    local removeCount, addCount = SWSSMenuItem.reconcileKeywords( photo, ssKeywords )
-                    local msg = "Keywords:"
-                    if removeCount == 0 and addCount == 0 then
-                        msg = msg .. " no changes"
-                    end
-                    if removeCount > 0 then
-                        msg = msg .. " removed " .. removeCount
-                    end
-                    if addCount > 0 then
-                        msg = msg .. " added " .. addCount
-                    end
+                if url ~= nil then
+                    local ssKeywords = SWSSMenuItem.collectKeywords( url )
+                    if ssKeywords ~= nil then
+                        local removeCount, addCount = SWSSMenuItem.reconcileKeywords( photo, ssKeywords )
+                        local msg = "Keywords:"
+                        if removeCount == 0 and addCount == 0 then
+                            msg = msg .. " no changes"
+                        end
+                        if removeCount > 0 then
+                            msg = msg .. " removed " .. removeCount
+                        end
+                        if addCount > 0 then
+                            msg = msg .. " added " .. addCount
+                        end
 
-                    photo.catalog:withPrivateWriteAccessDo( function() 
-                        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', msg )
-                    end )
+                        photo.catalog:withPrivateWriteAccessDo( function() 
+                            photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', msg )
+                        end )
 
-                    photo.catalog:withPrivateWriteAccessDo( function() 
-                        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
-                    end )
-                else
-                    LrDialogs.showError( "Failed to find keywords in shutterstock" )
+                        photo.catalog:withPrivateWriteAccessDo( function() 
+                            photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
+                        end )
+                    else
+                        LrDialogs.showError( "Failed to find keywords in shutterstock" )
+                    end
                 end
             end
 
             complete = complete + completeInc
         end 
 
-        pscope:setPortionComplete( complete, 100 )
+        pscope:done()
     end )
-
-    pscope:done()
 end
 
 function SWSSMenuItem.buildKeywordMapFromPhoto( photo )

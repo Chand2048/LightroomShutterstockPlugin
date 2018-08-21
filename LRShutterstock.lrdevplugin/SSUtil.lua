@@ -217,7 +217,7 @@ function SSUtil.findInCatalogBySSId( catalog, ssID )
     }
 
     if photos == nil then
-        return nil
+        return {}
     end
 
     -- double check the SSID to make sure we have the proper match
@@ -229,11 +229,7 @@ function SSUtil.findInCatalogBySSId( catalog, ssID )
         end
     end
 
-    if #results == 0 then
-        return nil
-    else
-        return results
-    end
+    return results
 end
 
 function SSUtil.findInCatalogByTitle( catalog, title ) 
@@ -246,7 +242,7 @@ function SSUtil.findInCatalogByTitle( catalog, title )
     }
 
     if photos == nil then
-        return nil
+        return {}
     end
 
     results = {}
@@ -257,11 +253,21 @@ function SSUtil.findInCatalogByTitle( catalog, title )
         end
     end
 
-    if #results == 0 then
-        return nil
-    else
-        return results
-    end
+    return results
+end
+
+function SSUtil.updateTitle( photo, title )
+    photo.catalog:withWriteAccessDo( 'update title', function() 
+        photo:setRawMetadata( 'title', title )
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', 'Title updated from shutterstock' )
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
+    end )
 end
 
 function SSUtil.setFound( photo, ssID )
@@ -292,6 +298,13 @@ function SSUtil.setFound( photo, ssID )
 end
 
 function SSUtil.setError( photo, closeUrl, msg )
+    local status = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockStatus' )
+    local audit = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockAudit' )
+
+    if status == 'Error' and msg == audit then
+        return
+    end
+
     photo.catalog:withPrivateWriteAccessDo( function() 
         photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', nil ) 
     end )
@@ -317,4 +330,13 @@ function SSUtil.setError( photo, closeUrl, msg )
     photo.catalog:withPrivateWriteAccessDo( function() 
         photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
     end )
+end
+
+function SSUtil.tableLength( t )
+    local c = 0
+    for _, _ in pairs( t ) do
+        c = c + 1
+    end
+
+    return c
 end

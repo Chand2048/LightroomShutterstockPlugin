@@ -226,6 +226,7 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
 
         if shortestIndex ~= nil then
             titleWords[shortestIndex] = nil
+            titleWordsLen = titleWordsLen - 1
         end
     end 
 

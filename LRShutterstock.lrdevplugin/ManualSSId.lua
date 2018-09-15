@@ -35,32 +35,22 @@ function SWSSMenuItem.showManualSSId()
 		
         local photo = catalog.targetPhoto
         local ssId = SSUtil.getSSIdFromPhoto( photo )
+		local f = LrView.osFactory()
         local props = LrBinding.makePropertyTable( context )
 		props.ssId = ssId
-		
-		local f = LrView.osFactory()
 				
 		-- Create the UI components like this so we can access the values as vars.
 		
-		local ssIdEditText = f:edit_text {
+		local ssIdEditText = f:edit_field {
 			immediate = true,
 			value = props.ssId,
 		}
-				
-		-- This is the function that will run when the value props.myString is changed.
-		
+
 		local function openInShutterstock()
             local ssId = ssIdEditText.value
             SSUtil.showInShutterstockByID( ssId )
 		end
-		
-		-- Add an observer to the property table.  We pass in the key and the function
-		-- we want called when the value for the key changes.
-		-- Note:  Only when the value changes will there be a notification sent which
-		-- causes the function to be invoked.
-		
-		--props:addObserver( "myObservedString", myCalledFunction )
-				
+
 		-- Create the contents for the dialog.
 		
 		local c = f:column {
@@ -74,31 +64,37 @@ function SWSSMenuItem.showManualSSId()
 				ssIdEditText,
 				f:push_button {
 					title = "Open In Shutterstock",
-					
-					-- When the 'Update' button is clicked.
-					
-					action = openInShutterstock
-				},
-			}, -- end row
-			f:row {
-				f:push_button {
-					title = "Validate",
-					
-					-- When the 'Update' button is clicked.
-					
 					action = openInShutterstock
 				},
 			}, -- end row
 		} -- end column
-		
-		LrDialogs.presentModalDialog {
-				title = "Manual link to shutterstock",
-				contents = c
-			}
 
+		local returnVal = LrDialogs.presentModalDialog {
+			title = "Manual link to shutterstock",
+			contents = c
+		}
+
+		--[[
+		-- retrieve the content of a URL
+        ssId = ssIdEditText.value
+		local http = require("socket.http")
+		local thumbUrl = 'https://thumb9.shutterstock.com/thumb_large/3780074/' .. ssId .. '/' .. ssId .. '.jpg'
+		local body, code = http.request( thumbUrl )
+		if not body then 
+			LrDialogs.message( code )
+		end 
+
+		-- save the content to a file
+		local f = assert(io.open('test.jpg', 'wb')) -- open in "binary" mode
+		f:write(body)
+		f:close()
+		--]]
+
+		if returnVal == 'ok' then
+            ssId = ssIdEditText.value
+			SSUtil.setFound( photo, ssId, 'Manual bind to shutterstock' )
+		end
 	end) -- end main function
-
-
 end
 
 -- Now display the dialogs.

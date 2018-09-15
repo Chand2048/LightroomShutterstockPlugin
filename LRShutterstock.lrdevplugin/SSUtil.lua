@@ -54,7 +54,7 @@ function SSUtil.getSSIdFromPhoto( photo )
     end
     
     local ssID = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockId' )
-     if ssID then
+    if ssID then
         return ssID
     end
 
@@ -116,6 +116,16 @@ end
 function SSUtil.showInShutterstockByID( ssID ) 
     if ssID then
         local url = SSUtil.getEditImageUrl( ssID )
+        LrHttp.openUrlInBrowser( url )
+        return true
+    end
+
+    return false
+end
+
+function SSUtil.showScrapeUrlInShutterstock( ssID )
+    if ssID then
+        local url = SSUtil.getSsScrapeImagePrefix() .. ssID
         LrHttp.openUrlInBrowser( url )
         return true
     end
@@ -274,7 +284,7 @@ function SSUtil.updateTitle( photo, title )
     end )
 end
 
-function SSUtil.setFound( photo, ssID )
+function SSUtil.setFound( photo, ssID, msg )
     photo.catalog:withPrivateWriteAccessDo( function() 
         photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockId', ssID ) 
     end )
@@ -292,8 +302,11 @@ function SSUtil.setFound( photo, ssID )
         photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockStatus', 'Accepted' ) 
     end )
 
-    photo.catalog:withPrivateWriteAccessDo( function() 
-        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', 'Found in Shutterstosck' )
+    photo.catalog:withPrivateWriteAccessDo( function()
+        if msg == nil then
+            msg = 'Found in Shutterstock'
+        end  
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockAudit', msg )
     end )
 
     photo.catalog:withPrivateWriteAccessDo( function() 
@@ -345,4 +358,42 @@ function SSUtil.tableLength( t )
     end
 
     return c
+end
+
+function SSUtil.verifyBySSId( photo, ssID )
+    return SSUtil.verifyByUrl( photo, SSUtil.getSsScrapeImagePrefix() .. ssID )
+end
+
+function SSUtil.verifyByUrl( photo, url )
+    if url then
+        local response, hdrs = LrHttp.get( url )
+
+        if response then
+            -- Check username
+            if string.find( response, SSUtil.getUserName(), 1, true ) == nil then
+                return false, false
+            end
+
+            --[[ This only shows up when logged in to a valid account.
+            -- Page will have something like <strong>Large</strong> &nbsp;|&nbsp; 5616 px x 3744 px &nbsp;
+            local dimensions = photo:getRawMetadata( 'croppedDimensions' )
+            local lookFor = string.format( '%s px x %s px', dimensions.width, dimensions.height )
+            SSUtil.showUser( lookFor, response )
+            
+            if string.find( response, lookFor, 1, true ) == nil then
+                LrDialogs.showError( "failed to find " .. lookFor )
+                return false
+            end
+            --]]
+
+            local title = photo:getFormattedMetadata( 'title' )
+            if string.find( response, title, 1, true ) == nil then
+                return false, true
+            end
+
+            return true, true
+        end
+    end
+
+    return false, false
 end

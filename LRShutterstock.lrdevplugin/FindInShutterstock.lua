@@ -64,6 +64,7 @@ function SWSSMenuItem.startFind( )
     end )
 end
 
+-- TODO: remove and use ssUtil version
 function SWSSMenuItem.verifyByUrl( photo, url )
     if url then
         local response, hdrs = LrHttp.get( url )

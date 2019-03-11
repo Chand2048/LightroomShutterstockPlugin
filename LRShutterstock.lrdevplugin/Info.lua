@@ -25,6 +25,10 @@ return {
 		    file = "OpenInShutterstock.lua",
 		},
 	    {
+		    title = "Copy title to caption",
+		    file = "CopyTitleToCaption.lua",
+		},
+	    {
 		    title = "Enumerate Shutterstock Catalog",
 		    file = "EnumerateShutterstock.lua",
 		},

@@ -19,6 +19,7 @@ return {
 		'com.adobe.filename',
 		'com.adobe.folder',
 		'com.adobe.title', 
+		'com.adobe.caption', 
 		
 		'com.adobe.separator',
 		

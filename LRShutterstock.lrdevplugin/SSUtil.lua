@@ -397,3 +397,21 @@ function SSUtil.verifyByUrl( photo, url )
 
     return false, false
 end
+
+function SSUtil.trim( s )
+    if s == nil then
+        return nil
+    end
+
+    local temp = s:gsub("^%s*(.-)%s*$", "%1")
+    if temp == nil then
+        return nil
+    end
+
+    if string.len( temp ) == 0 then
+        return nil
+    end
+
+    return temp
+end
+

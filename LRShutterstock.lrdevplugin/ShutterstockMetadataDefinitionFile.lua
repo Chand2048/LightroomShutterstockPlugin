@@ -27,9 +27,9 @@ return {
 			id = 'ShutterstockUrl',
 			title = "SS Url",
 			readOnly = false,
-			dataType = 'string', 
+			dataType = 'url', 
 			searchable = true,
-			version = 1,
+			version = 2,
 		},
 
 		{
@@ -80,6 +80,56 @@ return {
 		},
 
 		{
+			id = 'ShutterstockEditorial',
+			title = "SS Editorial",
+			readOnly = true,
+			dataType = 'enum', 
+			searchable = true,
+			browsable = true,
+			version = 1,
+			values = {
+				{
+					value = 'True',
+					title = "True",
+				},
+				{
+					value = 'False',
+					title = "False",
+				},
+			},
+		},
+
+		{
+			id = 'ShutterstockUploadDate',
+			title = "SS UploadDate",
+			readOnly = true,
+			dataType = 'string', 
+			searchable = true,
+			browsable = true,
+			version = 1,
+		},
+
+		{
+			id = 'ShutterstockThumbUrl',
+			title = "SS Thumb",
+			readOnly = true,
+			dataType = 'url', 
+			searchable = false,
+			browsable = false,
+			version = 1,
+		},
+
+		{
+			id = 'ShutterstockThumbUrl480',
+			title = "SS Thumb480",
+			readOnly = true,
+			dataType = 'url', 
+			searchable = false,
+			browsable = false,
+			version = 1,
+		},
+
+		{
 			id = 'ShutterstockLast',
 			title = "SS Last",
 			readOnly = true,
@@ -103,9 +153,9 @@ return {
 			id = 'CloseUrl',
 			title = "SS close Url",
 			readOnly = false,
-			dataType = 'string', 
+			dataType = 'url', 
 			searchable = true,
-			version = 1,
+			version = 2,
 		},
 
 	},

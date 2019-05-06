@@ -24,6 +24,12 @@ SSUtil = {}
 
 --============================================================================--
 
+-- Notes
+-- Download catalog info in blocks of 500
+--    https://submit.shutterstock.com/api/catalog_manager/media_types/all/items?filter_type=keywords&filter_value=&page_number=1&per_page=500&sort=popular
+-- Metadata for one image
+--    https://submit.shutterstock.com/api/content_editor/media/P1327424384
+
 function SSUtil.getUserName()
     return 'Chris W Anderson'
 end

@@ -41,6 +41,10 @@ return {
 		    file = "ReplaceKeywords.lua",
 		},
 	    {
+		    title = "Sync with JSON",
+		    file = "SyncWithJson.lua",
+		},
+	    {
 		    title = "Manually link to Shutterstock",
 		    file = "ManualSSId.lua",
 		},

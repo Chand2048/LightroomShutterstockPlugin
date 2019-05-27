@@ -28,20 +28,16 @@ return {
 		    title = "Copy title to caption",
 		    file = "CopyTitleToCaption.lua",
 		},
+	    -- {
+		--     title = "Replace keywords from Shutterstock",
+		--     file = "ReplaceKeywords.lua",
+		-- },
 	    {
-		    title = "Enumerate Shutterstock Catalog",
-		    file = "EnumerateShutterstock.lua",
+		    title = "Reset Shutterstock Fields",
+		    file = "ResetFields.lua",
 		},
 	    {
-		    title = "Find In Shutterstock",
-		    file = "FindInShutterstock.lua",
-		},
-	    {
-		    title = "Replace keywords from Shutterstock",
-		    file = "ReplaceKeywords.lua",
-		},
-	    {
-		    title = "Sync with JSON",
+		    title = "Sync with JSON Catalog",
 		    file = "SyncWithJson.lua",
 		},
 	    {

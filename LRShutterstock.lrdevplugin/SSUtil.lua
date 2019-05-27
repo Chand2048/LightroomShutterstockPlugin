@@ -333,6 +333,10 @@ function SSUtil.setError( photo, closeUrl, msg )
     end )
 
     photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockVerified', nil ) 
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
         photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUrl', nil ) 
     end )
 
@@ -352,6 +356,22 @@ function SSUtil.setError( photo, closeUrl, msg )
 
     photo.catalog:withPrivateWriteAccessDo( function() 
         photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockUploadDate', nil )
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockEditorial', nil )
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockThumbUrl', nil )
+    end )
+
+    photo.catalog:withPrivateWriteAccessDo( function() 
+        photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockThumbUrl480', nil )
     end )
 end
 

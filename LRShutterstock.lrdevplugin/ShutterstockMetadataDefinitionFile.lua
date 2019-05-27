@@ -24,6 +24,16 @@ return {
 		},
 
 		{
+			id = 'ShutterstockVerified',
+			title = "SS Verified",
+			readOnly = true,
+			dataType = 'string', 
+			searchable = true,
+			browsable = true,
+			version = 1,
+		},
+
+		{
 			id = 'ShutterstockUrl',
 			title = "SS Url",
 			readOnly = false,

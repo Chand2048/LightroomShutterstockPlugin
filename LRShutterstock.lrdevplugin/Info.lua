@@ -25,6 +25,10 @@ return {
 		    file = "OpenInShutterstock.lua",
 		},
 	    {
+		    title = "Open all photos in shutterstock but not in lightroom",
+		    file = "openPhotosNotInLightroom.lua",
+		},
+	    {
 		    title = "Copy title to caption",
 		    file = "CopyTitleToCaption.lua",
 		},

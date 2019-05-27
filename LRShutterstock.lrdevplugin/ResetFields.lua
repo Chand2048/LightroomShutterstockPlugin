@@ -22,9 +22,6 @@ SWSSMenuItem = {}
 --============================================================================--
 
 function SWSSMenuItem.showResetFields()
-    -- Create a bindable table.  Whenever a field in this table changes then notifications
-    -- will be sent.  Note that we do NOT bind this to the UI.
-    
     local photo = catalog.targetPhoto
     local result = LrDialogs.confirm( 
         'Reset Shutterstock Fields', 

@@ -18,7 +18,6 @@ local LrFunctionContext = import 'LrFunctionContext'
 local LrPathUtils = import 'LrPathUtils'
 local LrView = import 'LrView'
 local LrBinding = import 'LrBinding'
-local LrPhotoPictureView = import 'LrPhotoPictureView'
 
 local catalog = LrApplication.activeCatalog()
 
@@ -34,55 +33,6 @@ local fitler = nil
 
 SWSSMenuItem = {}
 
-function SWSSMenuItem.update( photo, name, value )
-    if photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', name ) ~= value then
-        photo.catalog:withPrivateWriteAccessDo( function() 
-            photo:setPropertyForPlugin( _PLUGIN, name, value ) 
-        end )
-
-        return true
-    end
-
-    return false
-end
-
-function SWSSMenuItem.setMatch( photo, fields )
-    -- Format from C# code
-    -- char delim = '\t';
-    -- 1 writer.Write(this.id); writer.Write(delim);
-    -- 2 writer.Write(this.status); writer.Write(delim);
-    -- 3 writer.Write(this.category1); writer.Write(delim);
-    -- 4 writer.Write(this.category2); writer.Write(delim);
-    -- 5 writer.Write(this.description); writer.Write(delim);
-    -- 6 writer.Write(this.isEditorial); writer.Write(delim);
-    -- 7 writer.Write(this.keywords); writer.Write(delim);
-    -- 8 writer.Write(this.filename); writer.Write(delim);
-    -- 9 writer.Write(this.uploadDate); writer.Write(delim);
-    -- 10 writer.Write(this.thumbnailURL); writer.Write(delim);
-    -- 11 writer.Write(this.thumbnailURL480); writer.Write(delim);
-    -- writer.Write("\r\n");
-
-    local c = false
-    c = SWSSMenuItem.update( photo, 'ShutterstockId', fields[1] ) or c
-    c = SWSSMenuItem.update( photo, 'ShutterstockVerified', "yes" ) or c
-    c = SWSSMenuItem.update( photo, 'ShutterstockStatus', "Accepted" ) or c
-    c = SWSSMenuItem.update( photo, 'ShutterstockEditorial', fields[6] ) or c
-    c = SWSSMenuItem.update( photo, 'ShutterstockUploadDate', fields[9] ) or c
-    c = SWSSMenuItem.update( photo, 'ShutterstockThumbUrl', fields[10] ) or c
-    c = SWSSMenuItem.update( photo, 'ShutterstockThumbUrl480', fields[11] ) or c
-    c = SWSSMenuItem.update( photo, 'ShutterstockUrl', SSUtil.getEditImageUrl( fields[1] ) ) or c
-    c = SWSSMenuItem.update( photo, 'CloseUrl', nil ) or c
-    c = SWSSMenuItem.update( photo, 'ShutterstockAudit', 'JSON Filename match' ) or c
-
-    if c then
-        photo.catalog:withPrivateWriteAccessDo( function() 
-            photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
-        end )
-    end
-
-    return c
-end
-
 -- Build list by ID of all photos that are not verified
 function SWSSMenuItem.selectedPhotoListByCatalogID()
     local photos = catalog.targetPhotos
@@ -93,8 +43,8 @@ function SWSSMenuItem.selectedPhotoListByCatalogID()
             local id = photo.localIdentifier
             if list[id] ~= nil then
                 LrDialogs.message( "Duplicate ID!!! " .. id )
-                SWSSMenuItem.update( photo, 'ShutterstockAudit', 'Duplicate shutterstock ID' )
-                SWSSMenuItem.update( list[id], 'ShutterstockAudit', 'Duplicate shutterstock ID' )
+                SSUtil.updatePlugProp( photo, 'ShutterstockAudit', 'Duplicate shutterstock ID' )
+                SSUtil.updatePlugProp( list[id], 'ShutterstockAudit', 'Duplicate shutterstock ID' )
             end
 
             list[id] = photo
@@ -176,45 +126,6 @@ function SWSSMenuItem.cropDistance( a, b )
     end
 
     return distanceX + distanceY
-end
-
-function SWSSMenuItem.verifyPhoto( photo, fields )
-    local lrThumb = LrPhotoPictureView.makePhotoPictureView{
-        width = 128, height = 128, photo = photo,
-    }
-    
-    local photoTitle = photo:getFormattedMetadata( 'title' )
-    local ssTitle = fields[5]
-    local ssID = fields[1]
-    local ssThumb = "C:\\Photos\\shutterstock\\" .. ssID .. ".jpg"
-    local dialogResult = nil
-    
-    LrFunctionContext.callWithContext( "showCustomDialog", function( context )
-	    local f = LrView.osFactory()
-        local props = LrBinding.makePropertyTable( context )
-	    local c = f:row {
-            bind_to_object = props,
-            f:column {
-                f:static_text { title = "Lightroom", },
-                lrThumb, 
-                f:static_text { title = photoTitle, width = 200, height = 200 },
-            },
-            f:column {
-                f:static_text { title = "Shutterstock", },
-                f:static_text { title = "", },
-                f:picture { value = ssThumb, },
-                f:static_text { title = "", },
-                f:static_text { title = ssTitle, width = 200, height = 200, },
-            },
-        }
-        
-        dialogResult = LrDialogs.presentModalDialog {
-            title = "Verify this is the same image...",
-            contents = c,
-        }
-    end)
-
-    return dialogResult == "ok"
 end
 
 function SWSSMenuItem.syncOneRow( catPhotos, fields )
@@ -299,7 +210,7 @@ function SWSSMenuItem.syncOneRow( catPhotos, fields )
     -- Use the matched table if ther is only one in there
     local changed = false
     for _, photo in pairs( matched ) do
-        if SWSSMenuItem.verifyPhoto( photo, fields ) == true then
+        if SSUtil.verifyPhoto( photo, fields ) == true then
             if filter ~= nil then
                 LrDialogs.message( "Setting match for " .. fields[8] .. "\n" .. fields[5] )
             end
@@ -307,49 +218,12 @@ function SWSSMenuItem.syncOneRow( catPhotos, fields )
             local lrID = photo.localIdentifier
             catPhotos[ lrID ] = nil 
     
-            changed = SWSSMenuItem.setMatch( photo, fields )
+            changed = SSUtil.setMatch( photo, fields, 'JSON Filename match' )
             break
         end
     end
 
     return false, changed
-end
-
-function SWSSMenuItem.readFileToRows( verifiedPhotos )
-    local file = io.open("C:\\Photos\\Shutterstock\\catalog.tsv", "r")
-    io.input( file )
-
-    local rows = {}
-    local index = 1
-
-    while true do
-        local row = io.read()
-        if row == nil then 
-            break 
-        end
-
-        local fields = SSUtil.split( row, "\t" )
-        local ssID = fields[1]
-        if verifiedPhotos[ ssID ] == nil then
-            if filter ~= nil then
-                if fields[8] == filter then
-                    rows[index] = fields
-                    index = index + 1
-                end
-            else
-                rows[index] = fields
-                index = index + 1
-            end
-        end
-    end
-    
-    io.close( file )
-
-    if filter ~= nil then
-        LrDialogs.message( 'processing ' .. index - 1 .. ' files' )
-    end
-
-    return rows
 end
 
 function SWSSMenuItem.startSyncWithJson( )
@@ -364,7 +238,7 @@ function SWSSMenuItem.startSyncWithJson( )
                 pscope:cancel()
             end) 
 
-        local rows = SWSSMenuItem.readFileToRows( verifiedPhotos )
+        local rows = SSUtil.getCatalogAsRows( verifiedPhotos )
         local rowsByFilename = {}
         local complete = 0
         local rowCount = SSUtil.tableLength( rows )
@@ -416,7 +290,7 @@ function SWSSMenuItem.startSyncWithJson( )
             local fileset = rowsByFilename[ photoCleanFilename ]
             if fileset ~= nil then
                 for _, fields in pairs( fileset ) do
-                    if SWSSMenuItem.verifyPhoto( photo, fields ) == true then
+                    if SSUtil.verifyPhoto( photo, fields ) == true then
                         if filter ~= nil then
                             LrDialogs.message( "Setting match for " .. fields[8] .. "\n" .. fields[5] )
                         end
@@ -424,7 +298,7 @@ function SWSSMenuItem.startSyncWithJson( )
                         local lrID = photo.localIdentifier
                         catPhotos[ lrID ] = nil 
                 
-                        changed = SWSSMenuItem.setMatch( photo, fields )
+                        changed = SSUtil.setMatch( photo, fields, 'JSON Filename match' )
                     end
                 end
             end

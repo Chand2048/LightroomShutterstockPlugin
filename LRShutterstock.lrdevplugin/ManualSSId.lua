@@ -74,25 +74,12 @@ function SWSSMenuItem.showManualSSId()
 			contents = c
 		}
 
-		--[[
-		-- retrieve the content of a URL
-        ssId = ssIdEditText.value
-		local http = require("socket.http")
-		local thumbUrl = 'https://thumb9.shutterstock.com/thumb_large/3780074/' .. ssId .. '/' .. ssId .. '.jpg'
-		local body, code = http.request( thumbUrl )
-		if not body then 
-			LrDialogs.message( code )
-		end 
-
-		-- save the content to a file
-		local f = assert(io.open('test.jpg', 'wb')) -- open in "binary" mode
-		f:write(body)
-		f:close()
-		--]]
-
 		if returnVal == 'ok' then
-            ssId = ssIdEditText.value
-			SSUtil.setFound( photo, ssId, 'Manual bind to shutterstock' )
+			ssId = ssIdEditText.value
+			local fields = SSUtil.findInCatalogBySSID( ssId )
+			if fields ~= nil then
+				SSUtil.setMatch( photo, fields, 'Manual bind by ssID' )
+			end
 		end
 	end) -- end main function
 end

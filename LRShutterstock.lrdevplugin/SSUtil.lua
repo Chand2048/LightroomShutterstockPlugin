@@ -15,6 +15,7 @@ local LrBinding = import 'LrBinding'
 local LrView = import 'LrView'
 local LrDialogs = import 'LrDialogs'
 local LrPathUtils = import 'LrPathUtils'
+local LrPhotoPictureView = import 'LrPhotoPictureView'
 
 --JSON = require 'JSON.lua'
 
@@ -36,6 +37,10 @@ end
 
 function SSUtil.getUserNameSafe()
     return 'Chris%20W%20Anderson'
+end
+
+function SSUtil.getCatalogFilename()
+    return "C:\\Photos\\Shutterstock\\catalog.tsv"
 end
 
 function SSUtil.getSsScrapeImagePrefix()
@@ -169,6 +174,46 @@ function SSUtil.createFtpConnection()
     return connection
 end
 
+-- Ask user to verify if the photo matches the thumbnails
+function SSUtil.verifyPhoto( photo, fields )
+    local lrThumb = LrPhotoPictureView.makePhotoPictureView{
+        width = 128, height = 128, photo = photo,
+    }
+    
+    local photoTitle = photo:getFormattedMetadata( 'title' )
+    local ssTitle = fields[5]
+    local ssID = fields[1]
+    local ssThumb = "C:\\Photos\\shutterstock\\" .. ssID .. ".jpg"
+    local dialogResult = nil
+    
+    LrFunctionContext.callWithContext( "showCustomDialog", function( context )
+	    local f = LrView.osFactory()
+        local props = LrBinding.makePropertyTable( context )
+	    local c = f:row {
+            bind_to_object = props,
+            f:column {
+                f:static_text { title = "Lightroom", },
+                lrThumb, 
+                f:static_text { title = photoTitle, width = 200, height = 200 },
+            },
+            f:column {
+                f:static_text { title = "Shutterstock", },
+                f:static_text { title = "", },
+                f:picture { value = ssThumb, },
+                f:static_text { title = "", },
+                f:static_text { title = ssTitle, width = 200, height = 200, },
+            },
+        }
+        
+        dialogResult = LrDialogs.presentModalDialog {
+            title = "Verify this is the same image...",
+            contents = c,
+        }
+    end)
+
+    return dialogResult == "ok"
+end
+
 function SSUtil.showUser( m1, m2 )
 	LrFunctionContext.callWithContext( "showCustomDialog", function( context )
 	    local f = LrView.osFactory()
@@ -274,6 +319,55 @@ function SSUtil.findInCatalogByTitle( catalog, title )
     end
 
     return results
+end
+
+function SSUtil.updatePlugProp( photo, propName, value )
+    if photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', propName ) ~= value then
+        photo.catalog:withPrivateWriteAccessDo( function() 
+            photo:setPropertyForPlugin( _PLUGIN, propName, value ) 
+        end )
+
+        return true
+    end
+
+    return false
+end
+
+function SSUtil.setMatch( photo, fields, matchDescription )
+    -- Format from C# code
+    -- char delim = '\t';
+    -- 1 writer.Write(this.id); writer.Write(delim);
+    -- 2 writer.Write(this.status); writer.Write(delim);
+    -- 3 writer.Write(this.category1); writer.Write(delim);
+    -- 4 writer.Write(this.category2); writer.Write(delim);
+    -- 5 writer.Write(this.description); writer.Write(delim);
+    -- 6 writer.Write(this.isEditorial); writer.Write(delim);
+    -- 7 writer.Write(this.keywords); writer.Write(delim);
+    -- 8 writer.Write(this.filename); writer.Write(delim);
+    -- 9 writer.Write(this.uploadDate); writer.Write(delim);
+    -- 10 writer.Write(this.thumbnailURL); writer.Write(delim);
+    -- 11 writer.Write(this.thumbnailURL480); writer.Write(delim);
+    -- writer.Write("\r\n");
+
+    local c = false
+    c = SSUtil.updatePlugProp( photo, 'ShutterstockId', fields[1] ) or c
+    c = SSUtil.updatePlugProp( photo, 'ShutterstockVerified', "yes" ) or c
+    c = SSUtil.updatePlugProp( photo, 'ShutterstockStatus', "Accepted" ) or c
+    c = SSUtil.updatePlugProp( photo, 'ShutterstockEditorial', fields[6] ) or c
+    c = SSUtil.updatePlugProp( photo, 'ShutterstockUploadDate', fields[9] ) or c
+    c = SSUtil.updatePlugProp( photo, 'ShutterstockThumbUrl', fields[10] ) or c
+    c = SSUtil.updatePlugProp( photo, 'ShutterstockThumbUrl480', fields[11] ) or c
+    c = SSUtil.updatePlugProp( photo, 'ShutterstockUrl', SSUtil.getEditImageUrl( fields[1] ) ) or c
+    c = SSUtil.updatePlugProp( photo, 'CloseUrl', nil ) or c
+    c = SSUtil.updatePlugProp( photo, 'ShutterstockAudit', matchDescription ) or c
+
+    if c then
+        photo.catalog:withPrivateWriteAccessDo( function() 
+            photo:setPropertyForPlugin( _PLUGIN, 'ShutterstockLast', os.date('%c') )
+        end )
+    end
+
+    return c
 end
 
 function SSUtil.updateTitle( photo, title )
@@ -441,3 +535,91 @@ function SSUtil.trim( s )
     return temp
 end
 
+function SSUtil.readCatalogToRows( filenameFilter )
+    local file = io.open(SSUtil.getCatalogFilename(), "r")
+    io.input( file )
+
+    local rows = {}
+    local index = 1
+
+    while true do
+        local row = io.read()
+        if row == nil then 
+            break 
+        end
+
+        local fields = SSUtil.split( row, "\t" )
+        local ssID = fields[1]
+
+        if filenameFilter ~= nil then
+            if fields[8] == filenameFilter then
+                rows[index] = fields
+                index = index + 1
+            end
+        else
+            rows[index] = fields
+            index = index + 1
+        end
+    end
+    
+    io.close( file )
+
+    if filenameFilter ~= nil then
+        LrDialogs.message( 'processing ' .. index - 1 .. ' files' )
+    end
+
+    return rows
+end
+
+-- Cache the TSV file
+-- Format from C# code
+-- char delim = '\t';
+-- 1 writer.Write(this.id); writer.Write(delim);
+-- 2 writer.Write(this.status); writer.Write(delim);
+-- 3 writer.Write(this.category1); writer.Write(delim);
+-- 4 writer.Write(this.category2); writer.Write(delim);
+-- 5 writer.Write(this.description); writer.Write(delim);
+-- 6 writer.Write(this.isEditorial); writer.Write(delim);
+-- 7 writer.Write(this.keywords); writer.Write(delim);
+-- 8 writer.Write(this.filename); writer.Write(delim);
+-- 9 writer.Write(this.uploadDate); writer.Write(delim);
+-- 10 writer.Write(this.thumbnailURL); writer.Write(delim);
+-- 11 writer.Write(this.thumbnailURL480); writer.Write(delim);
+-- 12 writer.Write(string.Format("{0} x {1}", this.width, this.height)); writer.Write(delim);
+-- writer.Write("\r\n");
+local catalogTSV = nil
+
+-- Read the entire TSV and break into rows/columns
+function SSUtil.getCatalogAsRows( photosToSkip, filenameFilter )
+    if catalogTSV == nil then
+        catalogTSV = SSUtil.readCatalogToRows( filenameFilter )
+    end
+
+    if photosToSkip ~= nil then
+        local filtered = {}
+        local i = 1
+        
+        for _, fields in pairs( catalogTSV ) do
+            local ssID = fields[1]
+            if photosToSkip[ ssID ] == nil then
+                filtered[ i ] = fields
+                i = i + 1
+            end
+        end
+
+        return filtered
+    else
+        return catalogTSV
+    end
+end
+
+function SSUtil.findInCatalogBySSID( ssID )
+    local cat = SSUtil.getCatalogAsRows()
+    for _, fields in pairs( catalogTSV ) do
+        if fields[ 1 ] == ssID then
+            return fields
+        end
+    end
+
+    return nil
+end

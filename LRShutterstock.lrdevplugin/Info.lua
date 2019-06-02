@@ -25,20 +25,24 @@ return {
 		    file = "OpenInShutterstock.lua",
 		},
 	    {
-		    title = "Open all photos in shutterstock but not in lightroom",
+		    title = "Open all unverifiied photos",
 		    file = "openPhotosNotInLightroom.lua",
 		},
 	    {
 		    title = "Copy title to caption",
 		    file = "CopyTitleToCaption.lua",
 		},
-	    -- {
-		--     title = "Replace keywords from Shutterstock",
-		--     file = "ReplaceKeywords.lua",
-		-- },
+	    {
+		    title = "Replace keywords from Shutterstock",
+		    file = "ReplaceKeywords.lua",
+		},
 	    {
 		    title = "Reset Shutterstock Fields",
 		    file = "ResetFields.lua",
+		},
+	    {
+		    title = "Find in Shutterstock",
+		    file = "FindInShutterstock.lua",
 		},
 	    {
 		    title = "Sync with JSON Catalog",

@@ -43,22 +43,32 @@ function SWSSMenuItem.startFind( )
         pscope:setPortionComplete(complete, 100)
 
         for _, photo in ipairs( catPhotos ) do
-            pscope:setCaption( string.format( "%s : Verifying with shutterstock metadata", photo:getFormattedMetadata( 'fileName' ) ) )
-            
-            local url = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockUrl' )
-            if not SWSSMenuItem.verifyByUrl( photo, url ) then
-                
-                local closeUrl = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'CloseUrl' )
-                if SWSSMenuItem.verifyByUrl( photo, closeUrl ) then
-                    local ssID = SSUtil.getIdFromEndOfUrl( closeUrl )
-                    SSUtil.setFound( photo, ssID )
-                else
-                    SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
-                end
-            end
-
+            SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
             complete = complete + completeInc
-        end 
+        end
+
+        -- for _, photo in ipairs( catPhotos ) do
+        --     pscope:setCaption( string.format( "%s : Verifying with shutterstock metadata", photo:getFormattedMetadata( 'fileName' ) ) )
+            
+        --     local url = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'ShutterstockUrl' )
+        --     if not SWSSMenuItem.verifyByUrl( photo, url ) then
+                
+        --         local closeUrl = photo:getPropertyForPlugin( 'com.shutterstock.lightroom.manager', 'CloseUrl' )
+        --         if SWSSMenuItem.verifyByUrl( photo, closeUrl ) then
+        --             local ssID = SSUtil.getIdFromEndOfUrl( closeUrl )
+        --             SSUtil.setFound( photo, ssID )
+        --         else
+        --             if SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc ) then
+        --                 local ssID = SSUtil.getIdFromEndOfUrl( url )
+        --                 SSUtil.setFound( photo, ssID )
+        --             else
+        --                 SSUtil.setError( photo, bestUrl, 'Failed to find matches' )
+        --             end
+        --         end
+        --     end
+
+        --     complete = complete + completeInc
+        -- end 
 
         pscope:done()
     end )
@@ -75,18 +85,6 @@ function SWSSMenuItem.verifyByUrl( photo, url )
                 return false, false
             end
 
-            --[[ This only shows up when logged in to a valid account.
-            -- Page will have something like <strong>Large</strong> &nbsp;|&nbsp; 5616 px x 3744 px &nbsp;
-            local dimensions = photo:getRawMetadata( 'croppedDimensions' )
-            local lookFor = string.format( '%s px x %s px', dimensions.width, dimensions.height )
-            SSUtil.showUser( lookFor, response )
-            
-            if string.find( response, lookFor, 1, true ) == nil then
-                LrDialogs.showError( "failed to find " .. lookFor )
-                return false
-            end
-            --]]
-
             local title = photo:getFormattedMetadata( 'title' )
             if string.find( response, title, 1, true ) == nil then
                 return false, true
@@ -98,31 +96,6 @@ function SWSSMenuItem.verifyByUrl( photo, url )
 
     return false, false
 end
-
---[[ Does not work because need proper security cookies to call this api 
-function SWSSMenuItem.verifyByssID( photo, ssID )
-    if ssID then
-    local url2 = "https://submit.shutterstock.com/api/content_editor/media/P" .. ssID
-    local response2, hdrs2 = LrHttp.get( url2 )
-    
-    if response2 then
-        local SSPhoto = JSON:decode( response2 )
-
-        -- Check filename matches
-        local fileName = SSUtil.cleanFilename( photo )
-        local fileNameJpg = filename .. '.jpg'
-
-        return 
-            SSPhoto.data.media_type == 'image' and
-            SSPhoto.data.status == 'approved' and
-            SSPhoto.data.is_adult == false and
-            SSPhoto.data.contributor_id == SSUtil.contributorID and
-            SSPhoto.data.original_filename == fileNameJpg and 
-            SSPhoto.data.sizes.huge_jpg.width == photo:getFormattedMetadata( 'maxAvailWidth' ) and
-            SSPhoto.data.sizes.huge_jpg.height == photo:getFormattedMetadata( 'maxAvailHeight' )
-    end
-end
---]]
 
 function SWSSMenuItem.collectUrlsFromSearch( searchStr )
     local searchUrl = string.format( "https://www.shutterstock.com/g/%s?searchterm=%s&search_source=base_gallery&language=en&sort=popular&image_type=photo&measurement=px&safe=false", SSUtil.getUserNameSafe(), searchStr )
@@ -200,8 +173,8 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
                     pscope:setCaption( string.format( "%s : Checking %s of %s", photo:getFormattedMetadata( 'fileName' ), i, urlsLen ) )
                     local fullMatch, partialMatch = SWSSMenuItem.verifyByUrl( photo, url )
                     if fullMatch then
-                        local ssID = SSUtil.getIdFromEndOfUrl( url )
-                        SSUtil.setFound( photo, ssID )
+                        -- local ssID = SSUtil.getIdFromEndOfUrl( url )
+                        -- SSUtil.setFound( photo, ssID )
                         return true
                     end
 
@@ -231,7 +204,7 @@ function SWSSMenuItem.findByTitle( photo, pscope, complete, completeInc )
         end
     end 
 
-    SSUtil.setError( photo, bestUrl, 'Failed to find matches' )
+    --SSUtil.setError( photo, bestUrl, 'Failed to find matches' )
     return false
 end
 
